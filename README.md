@@ -128,61 +128,25 @@ npm run start:gateway
 
 ## Get a test token
 
-With the AWS CLI configured, request a Cognito ID token. Enter credentials in your shell rather than storing passwords in `.env`:
+With the AWS CLI configured, request a Cognito ID token. The script reads the password from a hidden terminal prompt and prints only the token:
 
 ```bash
-export AWS_REGION=ap-southeast-2
-export COGNITO_CLIENT_ID=your-cognito-app-client-id
-export COGNITO_USERNAME=your-test-username
-read -s -p 'Cognito password: ' COGNITO_PASSWORD && echo
-
-export ID_TOKEN=$(aws cognito-idp initiate-auth \
-  --region "$AWS_REGION" \
-  --client-id "$COGNITO_CLIENT_ID" \
-  --auth-flow USER_PASSWORD_AUTH \
-  --auth-parameters "USERNAME=$COGNITO_USERNAME,PASSWORD=$COGNITO_PASSWORD" \
-  --query 'AuthenticationResult.IdToken' \
-  --output text)
-unset COGNITO_PASSWORD
+export COGNITO_AUDIENCE=your-cognito-app-client-id
+export ID_TOKEN=$(npm run --silent test:cognito-token -- your-test-username)
 ```
 
 For a hosted UI or authorization-code flow, assign its returned ID token to `ID_TOKEN` instead.
 
 ## Test the scenarios
 
-Success through the gateway:
+Start both services, then run all success, authentication, trust-boundary, and validation scenarios. If `ID_TOKEN` is unset, the script obtains one and prompts for the Cognito password:
 
 ```bash
-curl -i http://localhost:3000/api/users \
-  -H "Authorization: Bearer $ID_TOKEN"
-
-curl -i -X POST http://localhost:3000/api/users \
-  -H "Authorization: Bearer $ID_TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Ada Lovelace","email":"ada@example.com"}'
+export COGNITO_AUDIENCE=your-cognito-app-client-id
+npm run test:scenarios -- your-test-username
 ```
 
-Missing and invalid tokens return `401` without contacting the backend:
-
-```bash
-curl -i http://localhost:3000/api/users
-curl -i http://localhost:3000/api/users -H 'Authorization: Bearer invalid-token'
-```
-
-Calling the backend directly without the trusted header returns `403`:
-
-```bash
-curl -i http://localhost:3001/api/users
-```
-
-Invalid input returns `400` without a stack trace:
-
-```bash
-curl -i -X POST http://localhost:3000/api/users \
-  -H "Authorization: Bearer $ID_TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"","email":"invalid"}'
-```
+Set `GATEWAY_URL` or `BACKEND_URL` to test non-default endpoints. The runner exits immediately if a response has an unexpected status.
 
 ## Development commands
 
@@ -191,6 +155,8 @@ curl -i -X POST http://localhost:3000/api/users \
 | `npm run dev`                               | Run both services with TypeScript watch mode      |
 | `npm run dev:pretty`                        | Run both services with readable local logs        |
 | `npm test`                                  | Run gateway and User API tests                    |
+| `npm run test:cognito-token -- <username>`  | Request a Cognito ID token                        |
+| `npm run test:scenarios -- <username>`      | Run the live authentication scenarios             |
 | `npm run lint`                              | Run type-aware ESLint rules                       |
 | `npm run format`                            | Format the repository with Prettier               |
 | `npm run typecheck`                         | Check strict TypeScript without emitting files    |

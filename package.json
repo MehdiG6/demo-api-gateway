@@ -21,6 +21,8 @@
     "start:gateway": "npm start --workspace @demo/gateway",
     "start:backend": "npm start --workspace @demo/user-api",
     "test": "npm test --workspaces --if-present",
+    "test:cognito-token": "bash scripts/cognito/get-test-token.sh",
+    "test:scenarios": "bash scripts/cognito/run-test-scenarios.sh",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "validate": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build"
   },
