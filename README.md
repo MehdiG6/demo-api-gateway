@@ -33,14 +33,60 @@ services/
         ├── application/          # Use cases and repository contract
         ├── infrastructure/       # In-memory repository
         └── interfaces/http/      # Express routes and trusted-header policy
+infrastructure/
+├── bin/                          # CDK application entry point
+├── lib/                          # Cognito identity stack
+└── test/                         # CloudFormation assertion tests
 ```
 
 ## Cognito setup
 
-1. Create an Amazon Cognito **User Pool** and note its ID and AWS region.
-2. Create an **App client**. For the local AWS CLI example below, enable `ALLOW_USER_PASSWORD_AUTH` and use a client without a secret.
-3. Create a test user and set a permanent password.
-4. Copy the environment template and replace the example values:
+The CDK identity stack creates only the Cognito resources:
+
+- An email-based User Pool retained if the stack is deleted
+- A public App Client without a secret
+- Authorization-code flow suitable for PKCE
+- `USER_PASSWORD_AUTH` for the local AWS CLI example
+- A Cognito Hosted UI domain
+- Issuer, audience, User Pool ID, and Hosted UI outputs
+
+Authenticate the AWS CLI, then bootstrap CDK once for the account in Sydney. Replace the account ID and choose a globally unique lowercase domain prefix:
+
+```bash
+export AWS_REGION=ap-southeast-2
+export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+npm run cdk:bootstrap -- "aws://$AWS_ACCOUNT_ID/$AWS_REGION"
+npm run cdk:diff -- -c domainPrefix=your-unique-demo-api-domain
+npm run cdk:deploy -- -c domainPrefix=your-unique-demo-api-domain
+```
+
+Additional comma-separated callback and logout URLs can be supplied when needed:
+
+```bash
+npm run cdk:deploy -- \
+  -c domainPrefix=your-unique-demo-api-domain \
+  -c callbackUrls=http://localhost:3000/callback,https://example.com/callback \
+  -c logoutUrls=http://localhost:3000,https://example.com
+```
+
+After deployment, read the outputs and place them in `.env`:
+
+```bash
+export COGNITO_ISSUER=$(aws cloudformation describe-stacks \
+  --region ap-southeast-2 \
+  --stack-name DemoApiIdentityStack \
+  --query "Stacks[0].Outputs[?OutputKey=='CognitoIssuer'].OutputValue | [0]" \
+  --output text)
+
+export COGNITO_AUDIENCE=$(aws cloudformation describe-stacks \
+  --region ap-southeast-2 \
+  --stack-name DemoApiIdentityStack \
+  --query "Stacks[0].Outputs[?OutputKey=='CognitoAudience'].OutputValue | [0]" \
+  --output text)
+```
+
+Create a test user in the deployed User Pool and set a permanent password. Then copy the environment template and replace its issuer and audience placeholders with these output values:
 
 ```bash
 cp .env.example .env
@@ -58,6 +104,8 @@ USER_API_PORT=3001
 ```
 
 `COGNITO_AUDIENCE` is the App client ID and must match the token's `aud` claim. The JWKS URL is derived from the issuer. `COGNITO_JWKS_URI` is available only when an explicit override is needed.
+
+The stack is pinned to `ap-southeast-2`. The User Pool uses a retain policy, so deleting the CDK stack does not delete user identities. Delete the retained pool manually only when its data is no longer required.
 
 ## Run locally
 
@@ -138,16 +186,19 @@ curl -i -X POST http://localhost:3000/api/users \
 
 ## Development commands
 
-| Command              | Purpose                                           |
-| -------------------- | ------------------------------------------------- |
-| `npm run dev`        | Run both services with TypeScript watch mode      |
-| `npm run dev:pretty` | Run both services with readable local logs        |
-| `npm test`           | Run gateway and User API tests                    |
-| `npm run lint`       | Run type-aware ESLint rules                       |
-| `npm run format`     | Format the repository with Prettier               |
-| `npm run typecheck`  | Check strict TypeScript without emitting files    |
-| `npm run build`      | Compile both services to `dist/`                  |
-| `npm run validate`   | Run formatting, linting, types, tests, and builds |
+| Command                                     | Purpose                                           |
+| ------------------------------------------- | ------------------------------------------------- |
+| `npm run dev`                               | Run both services with TypeScript watch mode      |
+| `npm run dev:pretty`                        | Run both services with readable local logs        |
+| `npm test`                                  | Run gateway and User API tests                    |
+| `npm run lint`                              | Run type-aware ESLint rules                       |
+| `npm run format`                            | Format the repository with Prettier               |
+| `npm run typecheck`                         | Check strict TypeScript without emitting files    |
+| `npm run build`                             | Compile both services to `dist/`                  |
+| `npm run cdk:synth -- -c domainPrefix=...`  | Synthesize the identity stack                     |
+| `npm run cdk:diff -- -c domainPrefix=...`   | Preview identity changes                          |
+| `npm run cdk:deploy -- -c domainPrefix=...` | Deploy Cognito to Sydney                          |
+| `npm run validate`                          | Run formatting, linting, types, tests, and builds |
 
 ## Logging and tracing
 

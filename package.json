@@ -3,10 +3,16 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "services/*"
+    "services/*",
+    "infrastructure"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
+    "cdk:bootstrap": "npm run bootstrap --workspace @demo/infrastructure --",
+    "cdk:deploy": "npm run deploy --workspace @demo/infrastructure --",
+    "cdk:destroy": "npm run destroy --workspace @demo/infrastructure --",
+    "cdk:diff": "npm run diff --workspace @demo/infrastructure --",
+    "cdk:synth": "npm run synth --workspace @demo/infrastructure --",
     "dev": "concurrently --raw \"npm run dev --workspace @demo/gateway\" \"npm run dev --workspace @demo/user-api\"",
     "dev:pretty": "npm run dev | pino-pretty --colorize --single-line",
     "format": "prettier --write .",

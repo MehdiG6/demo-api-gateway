@@ -1,0 +1,25 @@
+{
+  "name": "@demo/infrastructure",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bootstrap": "cdk bootstrap",
+    "build": "tsc -p tsconfig.build.json",
+    "deploy": "cdk deploy --require-approval broadening",
+    "destroy": "cdk destroy",
+    "diff": "cdk diff",
+    "synth": "cdk synth",
+    "test": "tsx --test test/**/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.220.0",
+    "constructs": "^10.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "aws-cdk": "^2.1029.2",
+    "tsx": "^4.20.6"
+  }
+}
