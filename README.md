@@ -56,16 +56,16 @@ Authenticate the AWS CLI, then bootstrap CDK once for the account in Sydney. Rep
 export AWS_REGION=ap-southeast-2
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-npm run cdk:bootstrap -- "aws://$AWS_ACCOUNT_ID/$AWS_REGION"
-npm run cdk:diff -- -c domainPrefix=your-unique-demo-api-domain
-npm run cdk:deploy -- -c domainPrefix=your-unique-demo-api-domain
+npm run cdk:bootstrap -- -c domainPrefix=demo-secure-api "aws://$AWS_ACCOUNT_ID/$AWS_REGION"
+npm run cdk:diff -- -c domainPrefix=demo-secure-api
+npm run cdk:deploy -- -c domainPrefix=demo-secure-api
 ```
 
 Additional comma-separated callback and logout URLs can be supplied when needed:
 
 ```bash
 npm run cdk:deploy -- \
-  -c domainPrefix=your-unique-demo-api-domain \
+  -c domainPrefix=demo-secure-api \
   -c callbackUrls=http://localhost:3000/callback,https://example.com/callback \
   -c logoutUrls=http://localhost:3000,https://example.com
 ```
