@@ -31,21 +31,32 @@ export class IdentityStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    const readScope = new cognito.ResourceServerScope({
+      scopeName: 'users.read',
+      scopeDescription: 'Read users',
+    });
+    const writeScope = new cognito.ResourceServerScope({
+      scopeName: 'users.write',
+      scopeDescription: 'Create, update, and delete users',
+    });
+    const resourceServer = userPool.addResourceServer('ApiResourceServer', {
+      identifier: 'demo-api',
+      scopes: [readScope, writeScope],
+    });
+
     const client = userPool.addClient('OidcClient', {
       userPoolClientName: 'demo-api-gateway-local-client',
       generateSecret: false,
       preventUserExistenceErrors: true,
       enableTokenRevocation: true,
-      authFlows: {
-        userPassword: true,
-        userSrp: true,
-      },
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [
           cognito.OAuthScope.OPENID,
           cognito.OAuthScope.EMAIL,
           cognito.OAuthScope.PROFILE,
+          cognito.OAuthScope.resourceServer(resourceServer, readScope),
+          cognito.OAuthScope.resourceServer(resourceServer, writeScope),
         ],
         callbackUrls: props.callbackUrls,
         logoutUrls: props.logoutUrls,
@@ -68,7 +79,7 @@ export class IdentityStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'CognitoIssuer', {
       value: `https://cognito-idp.${cdk.Aws.REGION}.${cdk.Aws.URL_SUFFIX}/${userPool.userPoolId}`,
     });
-    new cdk.CfnOutput(this, 'CognitoAudience', {
+    new cdk.CfnOutput(this, 'CognitoClientId', {
       value: client.userPoolClientId,
     });
     new cdk.CfnOutput(this, 'HostedUiBaseUrl', {

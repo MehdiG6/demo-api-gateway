@@ -2,7 +2,7 @@
 
 Two small Node.js services demonstrate a clean trust boundary with Amazon Cognito:
 
-- **Gateway** verifies JWT signature, expiration, issuer, and audience against Cognito's cached JWKS, then proxies `/api/users` with a trusted `X-Verified-User` header.
+- **Gateway** verifies Cognito access-token signature, expiration, issuer, token use, client ID, and method-specific scopes against Cognito's cached JWKS, then proxies `/api/users` with a trusted `X-Verified-User` header.
 - **User API** implements in-memory CRUD. It does not parse JWTs and rejects requests without `X-Verified-User` with `403 Forbidden`.
 
 ## Traffic flow
@@ -46,9 +46,9 @@ The CDK identity stack creates only the Cognito resources:
 - An email-based User Pool retained if the stack is deleted
 - A public App Client without a secret
 - Authorization-code flow suitable for PKCE
-- `USER_PASSWORD_AUTH` for the local AWS CLI example
+- `users.read` and `users.write` API scopes
 - A Cognito Hosted UI domain
-- Issuer, audience, User Pool ID, and Hosted UI outputs
+- Issuer, App Client ID, User Pool ID, and Hosted UI outputs
 
 Authenticate the AWS CLI, then bootstrap CDK once for the account in Sydney. Replace the account ID and choose a globally unique lowercase domain prefix:
 
@@ -79,14 +79,20 @@ export COGNITO_ISSUER=$(aws cloudformation describe-stacks \
   --query "Stacks[0].Outputs[?OutputKey=='CognitoIssuer'].OutputValue | [0]" \
   --output text)
 
-export COGNITO_AUDIENCE=$(aws cloudformation describe-stacks \
+export COGNITO_CLIENT_ID=$(aws cloudformation describe-stacks \
   --region ap-southeast-2 \
   --stack-name DemoApiIdentityStack \
-  --query "Stacks[0].Outputs[?OutputKey=='CognitoAudience'].OutputValue | [0]" \
+  --query "Stacks[0].Outputs[?OutputKey=='CognitoClientId'].OutputValue | [0]" \
+  --output text)
+
+export COGNITO_HOSTED_UI_URL=$(aws cloudformation describe-stacks \
+  --region ap-southeast-2 \
+  --stack-name DemoApiIdentityStack \
+  --query "Stacks[0].Outputs[?OutputKey=='HostedUiBaseUrl'].OutputValue | [0]" \
   --output text)
 ```
 
-Create a test user in the deployed User Pool and set a permanent password. Then copy the environment template and replace its issuer and audience placeholders with these output values:
+Create a test user in the deployed User Pool and set a permanent password. Then copy the environment template and replace its Cognito placeholders with these output values:
 
 ```bash
 cp .env.example .env
@@ -99,11 +105,14 @@ TRUST_PROXY_HOPS=0
 GATEWAY_PORT=3000
 BACKEND_URL=http://127.0.0.1:3001
 COGNITO_ISSUER=https://cognito-idp.ap-southeast-2.amazonaws.com/ap-southeast-2_EXAMPLE
-COGNITO_AUDIENCE=your-cognito-app-client-id
+COGNITO_CLIENT_ID=your-cognito-app-client-id
+COGNITO_HOSTED_UI_URL=https://your-domain.auth.ap-southeast-2.amazoncognito.com
+COGNITO_READ_SCOPE=demo-api/users.read
+COGNITO_WRITE_SCOPE=demo-api/users.write
 USER_API_PORT=3001
 ```
 
-`COGNITO_AUDIENCE` is the App client ID and must match the token's `aud` claim. The JWKS URL is derived from the issuer. `COGNITO_JWKS_URI` is available only when an explicit override is needed.
+`COGNITO_CLIENT_ID` must match the access token's `client_id` claim. The gateway requires `users.read` for `GET` and `HEAD`, and `users.write` for mutations. The JWKS URL is derived from the issuer. `COGNITO_JWKS_URI` is available only when an explicit override is needed.
 
 The stack is pinned to `ap-southeast-2`. The User Pool uses a retain policy, so deleting the CDK stack does not delete user identities. Delete the retained pool manually only when its data is no longer required.
 
@@ -128,22 +137,20 @@ npm run start:gateway
 
 ## Get a test token
 
-With the AWS CLI configured, request a Cognito ID token. The script reads the password from a hidden terminal prompt and prints only the token:
+Request a scoped access token with Cognito's Authorization Code + PKCE flow. The helper reads Cognito settings from `.env`, opens the Hosted UI when possible, and asks for the complete callback URL after sign-in:
 
 ```bash
-export COGNITO_AUDIENCE=your-cognito-app-client-id
-export ID_TOKEN=$(npm run --silent test:cognito-token -- your-test-username)
+export ACCESS_TOKEN=$(npm run --silent test:cognito-token)
 ```
 
-For a hosted UI or authorization-code flow, assign its returned ID token to `ID_TOKEN` instead.
+The callback page can return `404`; copy its full address, including `code` and `state`, into the prompt. The helper exchanges the code using its PKCE verifier and prints only the access token.
 
 ## Test the scenarios
 
-Start both services, then run all success, authentication, trust-boundary, and validation scenarios. If `ID_TOKEN` is unset, the script obtains one and prompts for the Cognito password:
+Start both services, then run all success, authentication, authorization, trust-boundary, and validation scenarios. If `ACCESS_TOKEN` is unset, the script starts the PKCE flow:
 
 ```bash
-export COGNITO_AUDIENCE=your-cognito-app-client-id
-npm run test:scenarios -- your-test-username
+npm run test:scenarios
 ```
 
 Set `GATEWAY_URL` or `BACKEND_URL` to test non-default endpoints. The runner exits immediately if a response has an unexpected status.
@@ -155,8 +162,8 @@ Set `GATEWAY_URL` or `BACKEND_URL` to test non-default endpoints. The runner exi
 | `npm run dev`                               | Run both services with TypeScript watch mode      |
 | `npm run dev:pretty`                        | Run both services with readable local logs        |
 | `npm test`                                  | Run gateway and User API tests                    |
-| `npm run test:cognito-token -- <username>`  | Request a Cognito ID token                        |
-| `npm run test:scenarios -- <username>`      | Run the live authentication scenarios             |
+| `npm run test:cognito-token`                | Request a scoped Cognito access token with PKCE   |
+| `npm run test:scenarios`                    | Run the live authentication scenarios             |
 | `npm run lint`                              | Run type-aware ESLint rules                       |
 | `npm run format`                            | Format the repository with Prettier               |
 | `npm run typecheck`                         | Check strict TypeScript without emitting files    |
@@ -174,7 +181,7 @@ The gateway validates or creates `X-Request-ID` and W3C `traceparent` headers, r
 
 ```bash
 curl -i http://localhost:3000/api/users \
-  -H "Authorization: Bearer $ID_TOKEN" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H 'X-Request-ID: local-debug-123'
 ```
 

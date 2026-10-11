@@ -10,10 +10,10 @@ fi
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 gateway_url="${GATEWAY_URL:-http://localhost:3000}/api/users"
 backend_url="${BACKEND_URL:-http://localhost:3001}/api/users"
-token="${ID_TOKEN:-}"
+token="${ACCESS_TOKEN:-}"
 
 if [[ -z "$token" ]]; then
-  token="$($script_dir/get-test-token.sh "${COGNITO_USERNAME:-${1:-}}")"
+  token="$($script_dir/get-test-token.sh)"
 fi
 
 run_scenario() {

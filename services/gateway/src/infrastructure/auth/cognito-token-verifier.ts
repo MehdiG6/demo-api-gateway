@@ -2,7 +2,7 @@ import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 
 interface CognitoVerifierOptions {
   issuer: string;
-  audience: string;
+  clientId: string;
   jwksUri?: string;
 }
 
@@ -11,15 +11,20 @@ export interface VerifiedIdentity {
   claims: JWTPayload;
 }
 
-export type AccessTokenVerifier = (token: string) => Promise<VerifiedIdentity>;
+export type AccessTokenVerifier = (
+  token: string,
+  requiredScopes?: readonly string[],
+) => Promise<VerifiedIdentity>;
+
+export class InsufficientScopeError extends Error {}
 
 export function createCognitoTokenVerifier({
   issuer,
-  audience,
+  clientId,
   jwksUri,
 }: CognitoVerifierOptions): AccessTokenVerifier {
-  if (!issuer || !audience) {
-    throw new Error('COGNITO_ISSUER and COGNITO_AUDIENCE are required');
+  if (!issuer || !clientId) {
+    throw new Error('COGNITO_ISSUER and COGNITO_CLIENT_ID are required');
   }
 
   const jwks = createRemoteJWKSet(
@@ -27,18 +32,33 @@ export function createCognitoTokenVerifier({
     { cooldownDuration: 30_000, cacheMaxAge: 600_000 },
   );
 
-  return async function verifyAccessToken(token) {
+  return async function verifyAccessToken(token, requiredScopes = []) {
     const { payload } = await jwtVerify(token, jwks, {
       issuer,
-      audience,
       algorithms: ['RS256'],
+      requiredClaims: ['exp', 'sub'],
     });
 
-    const verifiedUser = payload.sub ?? payload.email;
-    if (typeof verifiedUser !== 'string' || verifiedUser.length === 0) {
-      throw new Error('Token does not contain a subject or email');
+    if (payload.token_use !== 'access') {
+      throw new Error('Token is not a Cognito access token');
+    }
+    if (payload.client_id !== clientId) {
+      throw new Error('Token was issued to a different client');
+    }
+    if (typeof payload.sub !== 'string' || payload.sub.length === 0) {
+      throw new Error('Token does not contain a subject');
     }
 
-    return { userId: verifiedUser, claims: payload };
+    const grantedScopes =
+      typeof payload.scope === 'string'
+        ? new Set(payload.scope.split(/\s+/).filter(Boolean))
+        : new Set<string>();
+    if (requiredScopes.some((scope) => !grantedScopes.has(scope))) {
+      throw new InsufficientScopeError(
+        'Token does not grant the required scope',
+      );
+    }
+
+    return { userId: payload.sub, claims: payload };
   };
 }

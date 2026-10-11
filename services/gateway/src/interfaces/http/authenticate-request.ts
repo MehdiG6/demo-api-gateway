@@ -1,6 +1,9 @@
 import type { RequestHandler } from 'express';
 
-import type { AccessTokenVerifier } from '../../infrastructure/auth/cognito-token-verifier.js';
+import {
+  InsufficientScopeError,
+  type AccessTokenVerifier,
+} from '../../infrastructure/auth/cognito-token-verifier.js';
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -10,8 +13,12 @@ declare module 'express-serve-static-core' {
 
 export function createAuthenticateRequest({
   verifyAccessToken,
+  readScope = 'demo-api/users.read',
+  writeScope = 'demo-api/users.write',
 }: {
   verifyAccessToken: AccessTokenVerifier;
+  readScope?: string;
+  writeScope?: string;
 }): RequestHandler {
   return async function authenticateRequest(request, response, next) {
     const authorization = request.get('authorization');
@@ -24,11 +31,23 @@ export function createAuthenticateRequest({
     }
 
     try {
-      const identity = await verifyAccessToken(match[1]);
+      const requiredScope =
+        request.method === 'GET' || request.method === 'HEAD'
+          ? readScope
+          : writeScope;
+      const identity = await verifyAccessToken(match[1], [requiredScope]);
       request.verifiedUser = identity.userId;
       request.headers['x-verified-user'] = identity.userId;
       next();
     } catch (error) {
+      if (error instanceof InsufficientScopeError) {
+        request.log?.warn(
+          { err: error },
+          'Authorization failed: scope missing',
+        );
+        response.status(403).json({ error: 'Forbidden' });
+        return;
+      }
       request.log?.warn(
         { err: error },
         'Authentication failed: token rejected',

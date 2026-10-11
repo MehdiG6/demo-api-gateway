@@ -11,12 +11,14 @@ try {
   const logger = createLogger(config.logLevel);
   const verifyAccessToken = createCognitoTokenVerifier({
     issuer: config.cognitoIssuer,
-    audience: config.cognitoAudience,
+    clientId: config.cognitoClientId,
     ...(config.cognitoJwksUri ? { jwksUri: config.cognitoJwksUri } : {}),
   });
   const app = createGatewayApp({
     backendUrl: config.backendUrl,
     verifyAccessToken,
+    readScope: config.cognitoReadScope,
+    writeScope: config.cognitoWriteScope,
     logger,
     trustProxyHops: config.trustProxyHops,
   });

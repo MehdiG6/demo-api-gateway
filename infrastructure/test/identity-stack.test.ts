@@ -31,20 +31,36 @@ void test('creates a retained email-based Cognito user pool', () => {
   });
 });
 
-void test('creates a public authorization-code OIDC client', () => {
+void test('creates API scopes and a public authorization-code client', () => {
   const template = createTemplate();
 
+  template.hasResourceProperties('AWS::Cognito::UserPoolResourceServer', {
+    Identifier: 'demo-api',
+    Scopes: Match.arrayWith([
+      { ScopeName: 'users.read', ScopeDescription: 'Read users' },
+      {
+        ScopeName: 'users.write',
+        ScopeDescription: 'Create, update, and delete users',
+      },
+    ]),
+  });
   template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
     AllowedOAuthFlows: ['code'],
     AllowedOAuthFlowsUserPoolClient: true,
-    AllowedOAuthScopes: Match.arrayWith(['openid', 'email', 'profile']),
+    AllowedOAuthScopes: Match.arrayWith([
+      'openid',
+      'email',
+      'profile',
+      Match.objectLike({
+        'Fn::Join': ['', Match.arrayWith(['/users.read'])],
+      }),
+      Match.objectLike({
+        'Fn::Join': ['', Match.arrayWith(['/users.write'])],
+      }),
+    ]),
     CallbackURLs: ['http://localhost:3000/callback'],
     GenerateSecret: false,
     PreventUserExistenceErrors: 'ENABLED',
-    ExplicitAuthFlows: Match.arrayWith([
-      'ALLOW_USER_PASSWORD_AUTH',
-      'ALLOW_USER_SRP_AUTH',
-    ]),
   });
 });
 
@@ -56,6 +72,6 @@ void test('creates the hosted UI domain and environment outputs', () => {
   });
   const outputs = template.findOutputs('*');
   assert.ok(outputs.CognitoIssuer);
-  assert.ok(outputs.CognitoAudience);
+  assert.ok(outputs.CognitoClientId);
   assert.ok(outputs.HostedUiBaseUrl);
 });

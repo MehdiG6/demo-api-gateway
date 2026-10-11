@@ -2,7 +2,9 @@ export interface GatewayConfig {
   port: number;
   backendUrl: string;
   cognitoIssuer: string;
-  cognitoAudience: string;
+  cognitoClientId: string;
+  cognitoReadScope: string;
+  cognitoWriteScope: string;
   cognitoJwksUri?: string;
   logLevel: string;
   trustProxyHops: number;
@@ -26,17 +28,20 @@ function parseTrustProxyHops(value: string | undefined): number {
 
 export function loadConfig(environment = process.env): GatewayConfig {
   const cognitoIssuer = environment.COGNITO_ISSUER;
-  const cognitoAudience = environment.COGNITO_AUDIENCE;
+  const cognitoClientId = environment.COGNITO_CLIENT_ID;
 
-  if (!cognitoIssuer || !cognitoAudience) {
-    throw new Error('COGNITO_ISSUER and COGNITO_AUDIENCE are required');
+  if (!cognitoIssuer || !cognitoClientId) {
+    throw new Error('COGNITO_ISSUER and COGNITO_CLIENT_ID are required');
   }
 
   return {
     port: parsePort(environment.GATEWAY_PORT),
     backendUrl: environment.BACKEND_URL ?? 'http://127.0.0.1:3001',
     cognitoIssuer,
-    cognitoAudience,
+    cognitoClientId,
+    cognitoReadScope: environment.COGNITO_READ_SCOPE ?? 'demo-api/users.read',
+    cognitoWriteScope:
+      environment.COGNITO_WRITE_SCOPE ?? 'demo-api/users.write',
     logLevel: environment.LOG_LEVEL ?? 'info',
     trustProxyHops: parseTrustProxyHops(environment.TRUST_PROXY_HOPS),
     ...(environment.COGNITO_JWKS_URI

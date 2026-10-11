@@ -10,6 +10,8 @@ import { createRequestLogger } from './interfaces/http/request-logger.js';
 interface GatewayDependencies {
   backendUrl: string;
   verifyAccessToken: AccessTokenVerifier;
+  readScope?: string;
+  writeScope?: string;
   logger?: Logger;
   trustProxyHops?: number;
 }
@@ -17,6 +19,8 @@ interface GatewayDependencies {
 export function createGatewayApp({
   backendUrl,
   verifyAccessToken,
+  readScope,
+  writeScope,
   logger = createLogger('info'),
   trustProxyHops = 0,
 }: GatewayDependencies) {
@@ -29,7 +33,14 @@ export function createGatewayApp({
     delete request.headers['x-verified-user'];
     next();
   });
-  app.use('/api/users', createAuthenticateRequest({ verifyAccessToken }));
+  app.use(
+    '/api/users',
+    createAuthenticateRequest({
+      verifyAccessToken,
+      ...(readScope ? { readScope } : {}),
+      ...(writeScope ? { writeScope } : {}),
+    }),
+  );
   app.use('/api/users', createReverseProxy(backendUrl));
 
   app.use((_request, response) => {

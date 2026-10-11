@@ -26,7 +26,7 @@ void test('enforces the complete zero-trust flow with a mocked OIDC provider', a
   const keyId = 'integration-key';
   const issuer =
     'https://cognito-idp.ap-southeast-2.amazonaws.com/ap-southeast-2_integration';
-  const audience = 'integration-client';
+  const clientId = 'integration-client';
   const publicJwk = await exportJWK(publicKey);
 
   const jwksServer = createServer((_request, response) => {
@@ -44,7 +44,7 @@ void test('enforces the complete zero-trust flow with a mocked OIDC provider', a
 
   const verifyAccessToken = createCognitoTokenVerifier({
     issuer,
-    audience,
+    clientId,
     jwksUri: `http://127.0.0.1:${jwksPort}/jwks.json`,
   });
   const gateway = createGatewayApp({
@@ -55,11 +55,14 @@ void test('enforces the complete zero-trust flow with a mocked OIDC provider', a
   const gatewayPort = await listen(gateway);
   context.after(() => close(gateway));
 
-  const token = await new SignJWT({ email: 'verified@example.com' })
+  const token = await new SignJWT({
+    client_id: clientId,
+    token_use: 'access',
+    scope: 'demo-api/users.read demo-api/users.write',
+  })
     .setProtectedHeader({ alg: 'RS256', kid: keyId })
     .setSubject('verified-user')
     .setIssuer(issuer)
-    .setAudience(audience)
     .setIssuedAt()
     .setExpirationTime('5m')
     .sign(privateKey);
