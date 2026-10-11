@@ -1,0 +1,33 @@
+{
+  "name": "demo-api-gateway",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "services/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev": "concurrently --raw \"npm run dev --workspace @demo/gateway\" \"npm run dev --workspace @demo/user-api\"",
+    "dev:pretty": "npm run dev | pino-pretty --colorize --single-line",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "start:gateway": "npm start --workspace @demo/gateway",
+    "start:backend": "npm start --workspace @demo/user-api",
+    "test": "npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "validate": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.38.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.38.0",
+    "prettier": "^3.6.2",
+    "pino-pretty": "^13.1.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
