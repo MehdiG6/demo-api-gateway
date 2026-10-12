@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Gateway",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/services/gateway/src/server.ts",
+      "runtimeArgs": ["--import", "tsx"],
+      "envFile": "${workspaceFolder}/.env",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "restart": true,
+      "skipFiles": ["<node_internals>/**"],
+      "sourceMaps": true
+    },
+    {
+      "name": "Debug User API",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/services/user-api/src/server.ts",
+      "runtimeArgs": ["--import", "tsx"],
+      "envFile": "${workspaceFolder}/.env",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "restart": true,
+      "skipFiles": ["<node_internals>/**"],
+      "sourceMaps": true
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug All Services",
+      "configurations": ["Debug User API", "Debug Gateway"],
+      "stopAll": true
+    }
+  ]
+}

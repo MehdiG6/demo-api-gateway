@@ -57,7 +57,7 @@ export function createRequestLogger(logger: Logger): RequestHandler {
       finished = true;
       const details = {
         method: request.method,
-        path: request.originalUrl,
+        path: request.path,
         sourceIp: request.ip,
         userId: request.get('x-verified-user'),
         statusCode: response.statusCode,
@@ -77,7 +77,7 @@ export function createRequestLogger(logger: Logger): RequestHandler {
         request.log.warn(
           {
             method: request.method,
-            path: request.originalUrl,
+            path: request.path,
             durationMs: Math.round(performance.now() - startedAt),
           },
           'Request aborted',

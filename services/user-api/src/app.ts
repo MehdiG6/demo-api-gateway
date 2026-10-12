@@ -30,7 +30,11 @@ export function createUserApiApp(
     response,
     next,
   ) => {
-    void next;
+    if (response.headersSent) {
+      next(error);
+      return;
+    }
+
     if (error instanceof SyntaxError) {
       request.log.warn({ err: error }, 'Invalid JSON body');
       response.status(400).json({ error: 'Invalid JSON body' });

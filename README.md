@@ -134,6 +134,22 @@ npm run dev --workspace @demo/gateway
 npm run dev --workspace @demo/user-api
 ```
 
+To start both services with the Node.js inspector and automatic restarts, run:
+
+```bash
+npm run debug
+```
+
+The gateway listens for a debugger on port `9230`, and the User API listens on
+port `9231`. Use `npm run debug:gateway` or `npm run debug:backend` to debug one
+service from a terminal.
+
+For VS Code, open `demo-api-gateway.code-workspace`, select **Run and Debug**,
+and launch **Debug Gateway**, **Debug User API**, or **Debug All Services**.
+These profiles load the root `.env` file and support breakpoints directly in
+the TypeScript source. Copy `.env.example` to `.env` before debugging if it
+does not already exist.
+
 For a production-style build, build once, then start each service in a separate terminal:
 
 ```bash
@@ -173,7 +189,10 @@ Set `GATEWAY_URL` or `BACKEND_URL` to the service base URL to test non-default e
 | --------------------------------------------------------------------- | ------------------------------------------------- |
 | `npm run dev`                                                         | Run both services with TypeScript watch mode      |
 | `npm run dev:pretty`                                                  | Run both services with readable local logs        |
-| `npm run build`                                                       | Compile all services and infrastructure           |
+| `npm run debug`                                                       | Debug both services with Node inspector and watch |
+| `npm run debug:gateway`                                               | Debug the gateway on inspector port 9230           |
+| `npm run debug:backend`                                               | Debug the User API on inspector port 9231          |
+| `npm run build`                                                       | Compile all services and  infrastructure           |
 | `npm run start:backend`                                               | Start the built User API                          |
 | `npm run start:gateway`                                               | Start the built gateway                           |
 | `npm test`                                                            | Run gateway and User API tests                    |

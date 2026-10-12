@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { z } from 'zod';
 
 import type { UserService } from '../../application/user-service.js';
@@ -9,6 +9,21 @@ const userDataSchema = z
     email: z.email().max(254),
   })
   .strict();
+
+function logInvalidUserData(
+  request: Request,
+  issues: z.ZodIssue[],
+): void {
+  request.log.warn(
+    {
+      validationIssues: issues.map(({ code, path }) => ({
+        code,
+        path: path.join('.'),
+      })),
+    },
+    'User data validation failed',
+  );
+}
 
 export function createUserRouter(userService: UserService): Router {
   const router = Router();
@@ -29,6 +44,7 @@ export function createUserRouter(userService: UserService): Router {
   router.post('/', async (request, response) => {
     const parsed = userDataSchema.safeParse(request.body);
     if (!parsed.success) {
+      logInvalidUserData(request, parsed.error.issues);
       response.status(400).json({ error: 'Invalid request body' });
       return;
     }
@@ -38,6 +54,7 @@ export function createUserRouter(userService: UserService): Router {
   router.put('/:id', async (request, response) => {
     const parsed = userDataSchema.safeParse(request.body);
     if (!parsed.success) {
+      logInvalidUserData(request, parsed.error.issues);
       response.status(400).json({ error: 'Invalid request body' });
       return;
     }

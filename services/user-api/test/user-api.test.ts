@@ -2,15 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { AddressInfo } from 'node:net';
 import pino from 'pino';
+import type { Logger } from 'pino';
 
 import type { UserRepository } from '../src/application/user-repository.js';
 import { UserService } from '../src/application/user-service.js';
 import { createUserApiApp } from '../src/app.js';
 
-async function startUserApi(userService?: UserService) {
-  const server = createUserApiApp(userService, pino({ enabled: false })).listen(
-    0,
-  );
+async function startUserApi(
+  userService?: UserService,
+  logger: Logger = pino({ enabled: false }),
+) {
+  const server = createUserApiApp(userService, logger).listen(0);
   await new Promise<void>((resolve) => server.once('listening', resolve));
   const { port } = server.address() as AddressInfo;
   return {
@@ -84,7 +86,16 @@ void test('supports the complete user CRUD lifecycle', async (context) => {
 });
 
 void test('returns 400 for invalid input without exposing details', async (context) => {
-  const api = await startUserApi();
+  const entries: Record<string, unknown>[] = [];
+  const logger = pino(
+    { base: null, timestamp: false },
+    {
+      write(message) {
+        entries.push(JSON.parse(message) as Record<string, unknown>);
+      },
+    },
+  );
+  const api = await startUserApi(undefined, logger);
   context.after(() => api.close());
 
   const invalidResponse = await fetch(api.url, {
@@ -96,6 +107,14 @@ void test('returns 400 for invalid input without exposing details', async (conte
   assert.deepEqual(await invalidResponse.json(), {
     error: 'Invalid request body',
   });
+  const validationEntry = entries.find(
+    (entry) => entry.msg === 'User data validation failed',
+  );
+  assert.deepEqual(validationEntry?.validationIssues, [
+    { code: 'too_small', path: 'name' },
+    { code: 'invalid_format', path: 'email' },
+  ]);
+  assert.doesNotMatch(JSON.stringify(validationEntry), /not-an-email/);
 
   const malformedResponse = await fetch(api.url, {
     method: 'POST',
@@ -106,6 +125,29 @@ void test('returns 400 for invalid input without exposing details', async (conte
   assert.deepEqual(await malformedResponse.json(), {
     error: 'Invalid JSON body',
   });
+});
+
+void test('omits query strings from request logs', async (context) => {
+  const entries: Record<string, unknown>[] = [];
+  const logger = pino(
+    { base: null, timestamp: false },
+    {
+      write(message) {
+        entries.push(JSON.parse(message) as Record<string, unknown>);
+      },
+    },
+  );
+  const api = await startUserApi(undefined, logger);
+  context.after(() => api.close());
+
+  const response = await fetch(`${api.url}?token=sensitive-query-value`, {
+    headers: verifiedHeaders,
+  });
+  await response.text();
+
+  const completion = entries.find((entry) => entry.msg === 'Request completed');
+  assert.equal(completion?.path, '/api/users');
+  assert.doesNotMatch(JSON.stringify(entries), /sensitive-query-value/);
 });
 
 void test('returns a generic 500 without leaking internal errors', async (context) => {

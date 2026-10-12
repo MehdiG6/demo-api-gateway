@@ -16,7 +16,10 @@ npm-debug.log*
 *.pid
 
 # Editors and operating systems
-.vscode/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
 .idea/
 .DS_Store
 Thumbs.db

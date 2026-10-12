@@ -53,12 +53,16 @@ export function createGatewayApp({
 
   const errorHandler: ErrorRequestHandler = (
     error,
-    _request,
+    request,
     response,
-    _next,
+    next,
   ) => {
-    void _next;
-    _request.log.error({ err: error }, 'Unhandled gateway error');
+    if (response.headersSent) {
+      next(error);
+      return;
+    }
+
+    request.log.error({ err: error }, 'Unhandled gateway error');
     response.status(500).json({ error: 'Internal Server Error' });
   };
   app.use(errorHandler);
