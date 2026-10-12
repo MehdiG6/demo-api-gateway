@@ -127,51 +127,78 @@ npm run dev
 
 The gateway starts on `http://localhost:3000`; the User API starts on `http://localhost:3001`. Data is intentionally lost whenever the User API restarts.
 
-For a production-style build:
+To run just one service, use its workspace from the repository root:
+
+```bash
+npm run dev --workspace @demo/gateway
+npm run dev --workspace @demo/user-api
+```
+
+For a production-style build, build once, then start each service in a separate terminal:
 
 ```bash
 npm run build
 npm run start:backend
+```
+
+In another terminal, start the gateway:
+
+```bash
 npm run start:gateway
 ```
 
 ## Get a test token
 
-Request a scoped access token with Cognito's Authorization Code + PKCE flow. The helper reads Cognito settings from `.env`, opens the Hosted UI when possible, and asks for the complete callback URL after sign-in:
+Request a scoped access token with Cognito's Authorization Code + PKCE flow. The helper reads `COGNITO_CLIENT_ID`, `COGNITO_HOSTED_UI_URL`, and optional `COGNITO_REDIRECT_URI` and `COGNITO_OAUTH_SCOPES` from the root `.env` file (or the environment). It opens the Hosted UI when possible and asks for the complete callback URL after sign-in. It requires `curl`, `node`, `openssl`, and an interactive terminal:
 
 ```bash
 export ACCESS_TOKEN=$(npm run --silent test:cognito-token)
 ```
 
-The callback page can return `404`; copy its full address, including `code` and `state`, into the prompt. The helper exchanges the code using its PKCE verifier and prints only the access token.
+Yes, the callback URL is needed for this Authorization Code + PKCE flow. Cognito redirects there after sign-in with a temporary authorization code and `state`; the helper reads those values from the full URL and exchanges the code for an access token. The redirect URI must match one registered in the Cognito App Client exactly. The default is `http://localhost:3000/callback`; set `COGNITO_REDIRECT_URI` in `.env` if you registered a different callback. The callback page may show `404` because the gateway does not serve a callback page: copy its full address, including `code` and `state`, into the helper prompt. On success, the helper prints a confirmation to stderr and outputs only the access token to stdout, so command substitution remains usable.
 
 ## Test the scenarios
 
-Start both services, then run all success, authentication, authorization, trust-boundary, and validation scenarios. If `ACCESS_TOKEN` is unset, the script starts the PKCE flow:
+Start both services, then run the user CRUD lifecycle (`GET /api/users`, `GET /api/users/:id`, `POST`, `PUT`, and `DELETE`) along with authentication, authorization, trust-boundary, and validation scenarios. The CRUD checks create a user, verify it appears in the list, fetch and update it, then delete it. If `ACCESS_TOKEN` is unset, the script runs the PKCE flow above. If it is set, the script reuses that token:
 
 ```bash
 npm run test:scenarios
 ```
 
-Set `GATEWAY_URL` or `BACKEND_URL` to test non-default endpoints. The runner exits immediately if a response has an unexpected status.
+Set `GATEWAY_URL` or `BACKEND_URL` to the service base URL to test non-default endpoints; the script appends `/api/users`. The runner exits immediately if a response has an unexpected status.
 
 ## Development commands
 
-| Command                                     | Purpose                                           |
-| ------------------------------------------- | ------------------------------------------------- |
-| `npm run dev`                               | Run both services with TypeScript watch mode      |
-| `npm run dev:pretty`                        | Run both services with readable local logs        |
-| `npm test`                                  | Run gateway and User API tests                    |
-| `npm run test:cognito-token`                | Request a scoped Cognito access token with PKCE   |
-| `npm run test:scenarios`                    | Run the live authentication scenarios             |
-| `npm run lint`                              | Run type-aware ESLint rules                       |
-| `npm run format`                            | Format the repository with Prettier               |
-| `npm run typecheck`                         | Check strict TypeScript without emitting files    |
-| `npm run build`                             | Compile both services to `dist/`                  |
-| `npm run cdk:synth -- -c domainPrefix=...`  | Synthesize the identity stack                     |
-| `npm run cdk:diff -- -c domainPrefix=...`   | Preview identity changes                          |
-| `npm run cdk:deploy -- -c domainPrefix=...` | Deploy Cognito to Sydney                          |
-| `npm run validate`                          | Run formatting, linting, types, tests, and builds |
+| Command                                                               | Purpose                                           |
+| --------------------------------------------------------------------- | ------------------------------------------------- |
+| `npm run dev`                                                         | Run both services with TypeScript watch mode      |
+| `npm run dev:pretty`                                                  | Run both services with readable local logs        |
+| `npm run build`                                                       | Compile all services and infrastructure           |
+| `npm run start:backend`                                               | Start the built User API                          |
+| `npm run start:gateway`                                               | Start the built gateway                           |
+| `npm test`                                                            | Run gateway and User API tests                    |
+| `npm test --workspace @demo/gateway`                                  | Run only the gateway tests                        |
+| `npm test --workspace @demo/user-api`                                 | Run only the User API tests                       |
+| `npm run test:cognito-token`                                          | Request a scoped Cognito access token with PKCE   |
+| `npm run test:scenarios`                                              | Run the live authentication scenarios             |
+| `npm run lint`                                                        | Run type-aware ESLint rules                       |
+| `npm run format`                                                      | Format the repository with Prettier               |
+| `npm run format:check`                                                | Check formatting without changing files           |
+| `npm run typecheck`                                                   | Check strict TypeScript without emitting files    |
+| `npm run cdk:bootstrap -- -c domainPrefix=... "aws://ACCOUNT/REGION"` | Bootstrap CDK for the AWS account and region      |
+| `npm run cdk:synth -- -c domainPrefix=...`                            | Synthesize the identity stack                     |
+| `npm run cdk:diff -- -c domainPrefix=...`                             | Preview identity changes                          |
+| `npm run cdk:deploy -- -c domainPrefix=...`                           | Deploy Cognito to Sydney                          |
+| `npm run cdk:destroy -- -c domainPrefix=...`                          | Delete the CDK stack                              |
+| `npm run validate`                                                    | Run formatting, linting, types, tests, and builds |
+
+Run commands from the repository root. For CDK commands, put `--` after the npm script name to pass options through to CDK; use the same `domainPrefix` supplied when deploying. For example, after setting `AWS_REGION` and `AWS_ACCOUNT_ID`, bootstrap CDK once with:
+
+```bash
+npm run cdk:bootstrap -- -c domainPrefix=demo-secure-api "aws://$AWS_ACCOUNT_ID/$AWS_REGION"
+```
+
+`npm run cdk:destroy` deletes the stack, but the retained Cognito User Pool is not deleted with it. Use `npm run validate` before submitting changes; it runs the formatting check, lint, type checks, tests, and builds in sequence.
 
 ## Logging and tracing
 

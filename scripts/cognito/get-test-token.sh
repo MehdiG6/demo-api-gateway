@@ -106,4 +106,5 @@ node -e '
     throw new Error(response.error_description ?? "Cognito did not return an access token");
   }
   process.stdout.write(response.access_token);
+  console.error("Successfully retrieved Cognito access token.");
 ' <<<"$token_response"
