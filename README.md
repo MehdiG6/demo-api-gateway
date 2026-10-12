@@ -190,9 +190,9 @@ Set `GATEWAY_URL` or `BACKEND_URL` to the service base URL to test non-default e
 | `npm run dev`                                                         | Run both services with TypeScript watch mode      |
 | `npm run dev:pretty`                                                  | Run both services with readable local logs        |
 | `npm run debug`                                                       | Debug both services with Node inspector and watch |
-| `npm run debug:gateway`                                               | Debug the gateway on inspector port 9230           |
-| `npm run debug:backend`                                               | Debug the User API on inspector port 9231          |
-| `npm run build`                                                       | Compile all services and  infrastructure           |
+| `npm run debug:gateway`                                               | Debug the gateway on inspector port 9230          |
+| `npm run debug:backend`                                               | Debug the User API on inspector port 9231         |
+| `npm run build`                                                       | Compile all services and infrastructure           |
 | `npm run start:backend`                                               | Start the built User API                          |
 | `npm run start:gateway`                                               | Start the built gateway                           |
 | `npm test`                                                            | Run gateway and User API tests                    |
