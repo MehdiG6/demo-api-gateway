@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 import express from 'express';
 import pino from 'pino';
 
-import { createRequestLogger } from '../src/interfaces/http/request-logger.js';
+import { createRequestLogger } from '../src/interfaces/http/request-logger.ts';
 
 void test('writes structured gateway request details with the verified user', async (context) => {
   const entries: Record<string, unknown>[] = [];

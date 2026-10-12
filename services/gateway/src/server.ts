@@ -3,11 +3,11 @@ import { fileURLToPath } from 'node:url';
 
 loadDotEnv({ path: fileURLToPath(new URL('../../../.env', import.meta.url)) });
 
-import { createGatewayApp } from './app.js';
-import { loadConfig } from './config.js';
-import { createCognitoTokenVerifier } from './infrastructure/auth/cognito-token-verifier.js';
-import { createLogger } from './infrastructure/logging/create-logger.js';
-import { registerProcessHandlers } from './infrastructure/runtime/register-process-handlers.js';
+import { createGatewayApp } from './app.ts';
+import { loadConfig } from './config.ts';
+import { createCognitoTokenVerifier } from './infrastructure/auth/cognito-token-verifier.ts';
+import { createLogger } from './infrastructure/logging/create-logger.ts';
+import { registerProcessHandlers } from './infrastructure/runtime/register-process-handlers.ts';
 
 try {
   const config = loadConfig();

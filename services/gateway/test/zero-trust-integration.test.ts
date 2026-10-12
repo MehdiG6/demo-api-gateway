@@ -5,9 +5,9 @@ import type { AddressInfo } from 'node:net';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import pino from 'pino';
 
-import { createUserApiApp } from '../../user-api/src/app.js';
-import { createGatewayApp } from '../src/app.js';
-import { createCognitoTokenVerifier } from '../src/infrastructure/auth/cognito-token-verifier.js';
+import { createUserApiApp } from '../../user-api/src/app.ts';
+import { createGatewayApp } from '../src/app.ts';
+import { createCognitoTokenVerifier } from '../src/infrastructure/auth/cognito-token-verifier.ts';
 
 async function listen(
   server: ReturnType<typeof createServer>,

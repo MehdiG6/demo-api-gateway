@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import pino from 'pino';
 
-import { createGatewayApp } from '../src/app.js';
+import { createGatewayApp } from '../src/app.ts';
 
 void test('forwards the verified identity and preserves the user API path', async (context) => {
   let receivedPath = '';

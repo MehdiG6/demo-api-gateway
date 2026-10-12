@@ -4,12 +4,12 @@ import express, {
 } from 'express';
 import type { Logger } from 'pino';
 
-import { UserService } from './application/user-service.js';
-import { InMemoryUserRepository } from './infrastructure/in-memory-user-repository.js';
-import { createLogger } from './infrastructure/logging/create-logger.js';
-import { requireVerifiedUser } from './interfaces/http/require-verified-user.js';
-import { createRequestLogger } from './interfaces/http/request-logger.js';
-import { createUserRouter } from './interfaces/http/user-router.js';
+import { UserService } from './application/user-service.ts';
+import { InMemoryUserRepository } from './infrastructure/in-memory-user-repository.ts';
+import { createLogger } from './infrastructure/logging/create-logger.ts';
+import { requireVerifiedUser } from './interfaces/http/require-verified-user.ts';
+import { createRequestLogger } from './interfaces/http/request-logger.ts';
+import { createUserRouter } from './interfaces/http/user-router.ts';
 
 interface UserApiDependencies {
   userService?: UserService;

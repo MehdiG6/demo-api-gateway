@@ -1,5 +1,5 @@
-import type { UserData } from '../domain/user.js';
-import type { UserRepository } from './user-repository.js';
+import type { UserData } from '../domain/user.ts';
+import type { UserRepository } from './user-repository.ts';
 
 export class UserService {
   constructor(private readonly users: UserRepository) {}

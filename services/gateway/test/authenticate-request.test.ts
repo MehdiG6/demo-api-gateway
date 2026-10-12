@@ -4,10 +4,10 @@ import type { AddressInfo } from 'node:net';
 import express from 'express';
 import pino, { type Logger } from 'pino';
 
-import type { AccessTokenVerifier } from '../src/infrastructure/auth/cognito-token-verifier.js';
-import { createAuthenticateRequest } from '../src/interfaces/http/authenticate-request.js';
-import { createAuthorizeRequest } from '../src/interfaces/http/authorize-request.js';
-import { createRequestLogger } from '../src/interfaces/http/request-logger.js';
+import type { AccessTokenVerifier } from '../src/infrastructure/auth/cognito-token-verifier.ts';
+import { createAuthenticateRequest } from '../src/interfaces/http/authenticate-request.ts';
+import { createAuthorizeRequest } from '../src/interfaces/http/authorize-request.ts';
+import { createRequestLogger } from '../src/interfaces/http/request-logger.ts';
 
 async function startTestApp(
   verifyAccessToken: AccessTokenVerifier,

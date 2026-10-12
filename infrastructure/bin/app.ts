@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
 
-import { IdentityStack } from '../lib/identity-stack.js';
+import { IdentityStack } from '../lib/identity-stack.ts';
 
 function listContext(app: cdk.App, key: string, fallback: string[]): string[] {
   const value = app.node.tryGetContext(key) as string | undefined;

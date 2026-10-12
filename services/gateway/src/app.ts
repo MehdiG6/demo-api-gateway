@@ -4,12 +4,12 @@ import express, {
 } from 'express';
 import type { Logger } from 'pino';
 
-import type { AccessTokenVerifier } from './infrastructure/auth/cognito-token-verifier.js';
-import { createReverseProxy } from './infrastructure/http/create-reverse-proxy.js';
-import { createLogger } from './infrastructure/logging/create-logger.js';
-import { createAuthenticateRequest } from './interfaces/http/authenticate-request.js';
-import { createAuthorizeRequest } from './interfaces/http/authorize-request.js';
-import { createRequestLogger } from './interfaces/http/request-logger.js';
+import type { AccessTokenVerifier } from './infrastructure/auth/cognito-token-verifier.ts';
+import { createReverseProxy } from './infrastructure/http/create-reverse-proxy.ts';
+import { createLogger } from './infrastructure/logging/create-logger.ts';
+import { createAuthenticateRequest } from './interfaces/http/authenticate-request.ts';
+import { createAuthorizeRequest } from './interfaces/http/authorize-request.ts';
+import { createRequestLogger } from './interfaces/http/request-logger.ts';
 
 interface GatewayDependencies {
   backendUrl: string;

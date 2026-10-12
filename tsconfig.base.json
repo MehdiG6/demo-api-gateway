@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "allowJs": false,
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "exactOptionalPropertyTypes": true,
     "forceConsistentCasingInFileNames": true,
@@ -11,8 +12,12 @@
     "noImplicitOverride": true,
     "noUncheckedIndexedAccess": true,
     "resolveJsonModule": true,
+    "rewriteRelativeImportExtensions": true,
     "skipLibCheck": true,
+    "sourceMap": true,
     "strict": true,
-    "target": "ES2022"
+    "target": "ES2022",
+    "inlineSources": true,
+    "verbatimModuleSyntax": true
   }
 }

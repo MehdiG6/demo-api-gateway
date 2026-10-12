@@ -4,9 +4,9 @@ import type { AddressInfo } from 'node:net';
 import pino from 'pino';
 import type { Logger } from 'pino';
 
-import type { UserRepository } from '../src/application/user-repository.js';
-import { UserService } from '../src/application/user-service.js';
-import { createUserApiApp } from '../src/app.js';
+import type { UserRepository } from '../src/application/user-repository.ts';
+import { UserService } from '../src/application/user-service.ts';
+import { createUserApiApp } from '../src/app.ts';
 
 async function startUserApi(
   userService?: UserService,

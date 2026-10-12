@@ -3,7 +3,7 @@ import type { RequestHandler } from 'express';
 import {
   type AccessTokenVerifier,
   type VerifiedIdentity,
-} from '../../infrastructure/auth/cognito-token-verifier.js';
+} from '../../infrastructure/auth/cognito-token-verifier.ts';
 
 declare module 'express-serve-static-core' {
   interface Request {

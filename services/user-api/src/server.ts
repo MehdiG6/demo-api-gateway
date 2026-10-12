@@ -3,10 +3,10 @@ import { fileURLToPath } from 'node:url';
 
 loadDotEnv({ path: fileURLToPath(new URL('../../../.env', import.meta.url)) });
 
-import { createUserApiApp } from './app.js';
-import { loadConfig } from './config.js';
-import { createLogger } from './infrastructure/logging/create-logger.js';
-import { registerProcessHandlers } from './infrastructure/runtime/register-process-handlers.js';
+import { createUserApiApp } from './app.ts';
+import { loadConfig } from './config.ts';
+import { createLogger } from './infrastructure/logging/create-logger.ts';
+import { registerProcessHandlers } from './infrastructure/runtime/register-process-handlers.ts';
 
 try {
   const { port, logLevel, trustProxyHops } = loadConfig();

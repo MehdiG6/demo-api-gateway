@@ -1,8 +1,8 @@
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 
-import type { UserService } from '../../application/user-service.js';
-import type { UserData } from '../../domain/user.js';
+import type { UserService } from '../../application/user-service.ts';
+import type { UserData } from '../../domain/user.ts';
 
 const userDataSchema = z
   .object({

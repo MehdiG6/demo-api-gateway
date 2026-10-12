@@ -3,7 +3,7 @@ import test from 'node:test';
 import * as cdk from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 
-import { IdentityStack } from '../lib/identity-stack.js';
+import { IdentityStack } from '../lib/identity-stack.ts';
 
 function createTemplate(): Template {
   const app = new cdk.App();

@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 
-import { createCognitoTokenVerifier } from '../src/infrastructure/auth/cognito-token-verifier.js';
+import { createCognitoTokenVerifier } from '../src/infrastructure/auth/cognito-token-verifier.ts';
 
 void test('verifies claims and caches remote Cognito signing keys', async (context) => {
   const { publicKey, privateKey } = await generateKeyPair('RS256');

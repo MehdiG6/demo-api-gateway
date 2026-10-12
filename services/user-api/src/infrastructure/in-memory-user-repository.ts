@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import type { UserRepository } from '../application/user-repository.js';
-import type { User, UserData } from '../domain/user.js';
+import type { UserRepository } from '../application/user-repository.ts';
+import type { User, UserData } from '../domain/user.ts';
 
 export class InMemoryUserRepository implements UserRepository {
   private readonly users = new Map<string, User>();
