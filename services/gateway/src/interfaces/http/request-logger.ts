@@ -49,6 +49,7 @@ function getTraceparent(suppliedTraceparent: string | undefined): string {
 export function createRequestLogger(logger: Logger): RequestHandler {
   return function requestLogger(request, response, next) {
     const startedAt = performance.now();
+    const path = request.path;
     const requestId = getRequestId(request.get('x-request-id'));
     const traceparent = getTraceparent(request.get('traceparent'));
     const [, traceId, spanId] = traceparent.split('-');
@@ -71,7 +72,7 @@ export function createRequestLogger(logger: Logger): RequestHandler {
       const details = {
         timestamp: new Date().toISOString(),
         method: request.method,
-        path: request.path,
+        path,
         sourceIp: request.ip,
         ...(request.verifiedUser ? { userId: request.verifiedUser } : {}),
         statusCode: response.statusCode,
@@ -91,7 +92,7 @@ export function createRequestLogger(logger: Logger): RequestHandler {
         request.log.warn(
           {
             method: request.method,
-            path: request.path,
+            path,
             durationMs: Math.round(performance.now() - startedAt),
           },
           'Request aborted',
