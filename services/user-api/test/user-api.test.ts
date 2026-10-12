@@ -12,7 +12,10 @@ async function startUserApi(
   userService?: UserService,
   logger: Logger = pino({ enabled: false }),
 ) {
-  const server = createUserApiApp(userService, logger).listen(0);
+  const server = createUserApiApp({
+    ...(userService ? { userService } : {}),
+    logger,
+  }).listen(0);
   await new Promise<void>((resolve) => server.once('listening', resolve));
   const { port } = server.address() as AddressInfo;
   return {

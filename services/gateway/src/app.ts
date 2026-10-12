@@ -1,4 +1,7 @@
-import express, { type ErrorRequestHandler } from 'express';
+import express, {
+  type ErrorRequestHandler,
+  type RequestHandler,
+} from 'express';
 import type { Logger } from 'pino';
 
 import type { AccessTokenVerifier } from './infrastructure/auth/cognito-token-verifier.js';
@@ -17,6 +20,34 @@ interface GatewayDependencies {
   trustProxyHops?: number;
 }
 
+const removeUntrustedUserHeader: RequestHandler = (
+  request,
+  _response,
+  next,
+) => {
+  delete request.headers['x-verified-user'];
+  next();
+};
+
+const handleUnknownRoute: RequestHandler = (_request, response) => {
+  response.status(404).json({ error: 'Not Found' });
+};
+
+const handleGatewayError: ErrorRequestHandler = (
+  error,
+  request,
+  response,
+  next,
+) => {
+  if (response.headersSent) {
+    next(error);
+    return;
+  }
+
+  request.log.error({ err: error }, 'Unhandled gateway error');
+  response.status(500).json({ error: 'Internal Server Error' });
+};
+
 export function createGatewayApp({
   backendUrl,
   verifyAccessToken,
@@ -30,14 +61,8 @@ export function createGatewayApp({
   app.set('trust proxy', trustProxyHops);
   app.use(createRequestLogger(logger));
 
-  app.use('/api/users', (request, _response, next) => {
-    delete request.headers['x-verified-user'];
-    next();
-  });
-  app.use(
-    '/api/users',
-    createAuthenticateRequest({ verifyAccessToken }),
-  );
+  app.use('/api/users', removeUntrustedUserHeader);
+  app.use('/api/users', createAuthenticateRequest({ verifyAccessToken }));
   app.use(
     '/api/users',
     createAuthorizeRequest({
@@ -47,25 +72,8 @@ export function createGatewayApp({
   );
   app.use('/api/users', createReverseProxy(backendUrl));
 
-  app.use((_request, response) => {
-    response.status(404).json({ error: 'Not Found' });
-  });
-
-  const errorHandler: ErrorRequestHandler = (
-    error,
-    request,
-    response,
-    next,
-  ) => {
-    if (response.headersSent) {
-      next(error);
-      return;
-    }
-
-    request.log.error({ err: error }, 'Unhandled gateway error');
-    response.status(500).json({ error: 'Internal Server Error' });
-  };
-  app.use(errorHandler);
+  app.use(handleUnknownRoute);
+  app.use(handleGatewayError);
 
   return app;
 }

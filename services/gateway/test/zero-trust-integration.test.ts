@@ -38,7 +38,7 @@ void test('enforces the complete zero-trust flow with a mocked OIDC provider', a
   const jwksPort = await listen(jwksServer);
   context.after(() => close(jwksServer));
 
-  const backend = createUserApiApp(undefined, logger).listen(0);
+  const backend = createUserApiApp({ logger }).listen(0);
   const backendPort = await listen(backend);
   context.after(() => close(backend));
 

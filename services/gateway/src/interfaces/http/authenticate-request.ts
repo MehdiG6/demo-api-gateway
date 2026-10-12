@@ -12,44 +12,54 @@ declare module 'express-serve-static-core' {
   }
 }
 
+interface AuthenticationFailure {
+  authenticationError: string;
+  authenticationErrorCode?: string;
+}
+
+function getBearerToken(authorizationHeader: string | undefined) {
+  return authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
+}
+
+function describeAuthenticationFailure(error: unknown): AuthenticationFailure {
+  const authenticationError =
+    error instanceof Error ? error.name : 'UnknownError';
+
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string'
+  ) {
+    return { authenticationError, authenticationErrorCode: error.code };
+  }
+
+  return { authenticationError };
+}
+
 export function createAuthenticateRequest({
   verifyAccessToken,
 }: {
   verifyAccessToken: AccessTokenVerifier;
 }): RequestHandler {
   return async function authenticateRequest(request, response, next) {
-    const authorization = request.get('authorization');
-    const match = authorization?.match(/^Bearer\s+(.+)$/i);
+    const token = getBearerToken(request.get('authorization'));
 
-    if (!match?.[1]) {
+    if (!token) {
       request.log?.warn('Authentication failed: bearer token missing');
       response.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
     try {
-      const identity = await verifyAccessToken(match[1]);
+      const identity = await verifyAccessToken(token);
       request.authenticatedIdentity = identity;
       request.verifiedUser = identity.userId;
       request.headers['x-verified-user'] = identity.userId;
       next();
     } catch (error) {
-      const authenticationError =
-        error instanceof Error ? error.name : 'UnknownError';
-      const authenticationErrorCode =
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        typeof error.code === 'string'
-          ? error.code
-          : undefined;
       request.log?.warn(
-        {
-          authenticationError,
-          ...(authenticationErrorCode
-            ? { authenticationErrorCode }
-            : {}),
-        },
+        describeAuthenticationFailure(error),
         'Authentication failed: token rejected',
       );
       response.status(401).json({ error: 'Unauthorized' });

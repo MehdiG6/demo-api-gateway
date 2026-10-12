@@ -12,12 +12,10 @@ try {
   const { port, logLevel, trustProxyHops } = loadConfig();
   const logger = createLogger(logLevel);
 
-  const server = createUserApiApp(undefined, logger, trustProxyHops).listen(
-    port,
-    () => {
-      logger.info({ port }, 'User API listening');
-    },
-  );
+  const app = createUserApiApp({ logger, trustProxyHops });
+  const server = app.listen(port, () => {
+    logger.info({ port }, 'User API listening');
+  });
   registerProcessHandlers(server, logger);
 } catch (error) {
   createLogger('info').fatal({ err: error }, 'User API failed to start');

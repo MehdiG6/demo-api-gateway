@@ -5,7 +5,10 @@ export function registerProcessHandlers(server: Server, logger: Logger): void {
   let shuttingDown = false;
 
   const shutdown = (signal: NodeJS.Signals) => {
-    if (shuttingDown) return;
+    if (shuttingDown) {
+      return;
+    }
+
     shuttingDown = true;
     logger.info({ signal }, 'Graceful shutdown started');
 

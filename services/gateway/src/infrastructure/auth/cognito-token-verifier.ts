@@ -11,9 +11,7 @@ export interface VerifiedIdentity {
   claims: JWTPayload;
 }
 
-export type AccessTokenVerifier = (
-  token: string,
-) => Promise<VerifiedIdentity>;
+export type AccessTokenVerifier = (token: string) => Promise<VerifiedIdentity>;
 
 export function createCognitoTokenVerifier({
   issuer,

@@ -1,5 +1,15 @@
 import type { RequestHandler } from 'express';
 
+const READ_METHODS = new Set(['GET', 'HEAD']);
+
+function getGrantedScopes(scopeClaim: unknown): Set<string> {
+  if (typeof scopeClaim !== 'string') {
+    return new Set();
+  }
+
+  return new Set(scopeClaim.split(/\s+/).filter(Boolean));
+}
+
 export function createAuthorizeRequest({
   readScope = 'demo-api/users.read',
   writeScope = 'demo-api/users.write',
@@ -8,15 +18,12 @@ export function createAuthorizeRequest({
   writeScope?: string;
 } = {}): RequestHandler {
   return function authorizeRequest(request, response, next) {
-    const requiredScope =
-      request.method === 'GET' || request.method === 'HEAD'
-        ? readScope
-        : writeScope;
-    const scopeClaim = request.authenticatedIdentity?.claims.scope;
-    const grantedScopes =
-      typeof scopeClaim === 'string'
-        ? new Set(scopeClaim.split(/\s+/).filter(Boolean))
-        : new Set<string>();
+    const requiredScope = READ_METHODS.has(request.method)
+      ? readScope
+      : writeScope;
+    const grantedScopes = getGrantedScopes(
+      request.authenticatedIdentity?.claims.scope,
+    );
 
     if (!grantedScopes.has(requiredScope)) {
       request.log?.warn(

@@ -4,6 +4,33 @@ import type { OutgoingHttpHeaders } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import type { RequestHandler } from 'express';
 
+function createDownstreamTraceparent(traceparent: string): string {
+  const [version, traceId, , flags] = traceparent.split('-');
+  const spanId = randomBytes(8).toString('hex');
+  return `${version}-${traceId}-${spanId}-${flags}`;
+}
+
+function createProxyHeaders(
+  request: Parameters<RequestHandler>[0],
+  target: URL,
+): OutgoingHttpHeaders {
+  return {
+    host: target.host,
+    'x-request-id': request.requestId,
+    traceparent: createDownstreamTraceparent(request.traceparent),
+    ...(request.verifiedUser
+      ? { 'x-verified-user': request.verifiedUser }
+      : {}),
+    ...(request.headers.accept ? { accept: request.headers.accept } : {}),
+    ...(request.headers['content-type']
+      ? { 'content-type': request.headers['content-type'] }
+      : {}),
+    ...(request.headers['content-length']
+      ? { 'content-length': request.headers['content-length'] }
+      : {}),
+  };
+}
+
 export function createReverseProxy(backendUrl: string): RequestHandler {
   const backend = new URL(backendUrl);
   const sendRequest =
@@ -11,24 +38,7 @@ export function createReverseProxy(backendUrl: string): RequestHandler {
 
   return function reverseProxy(request, response) {
     const target = new URL(request.originalUrl, backend);
-    const [version, traceId, , flags] = request.traceparent.split('-');
-    const headers: OutgoingHttpHeaders = {
-      host: target.host,
-      'x-request-id': request.requestId,
-      traceparent: `${version}-${traceId}-${randomBytes(8).toString('hex')}-${flags}`,
-      ...(request.verifiedUser
-        ? { 'x-verified-user': request.verifiedUser }
-        : {}),
-      ...(request.headers.accept
-        ? { accept: request.headers.accept }
-        : {}),
-      ...(request.headers['content-type']
-        ? { 'content-type': request.headers['content-type'] }
-        : {}),
-      ...(request.headers['content-length']
-        ? { 'content-length': request.headers['content-length'] }
-        : {}),
-    };
+    const headers = createProxyHeaders(request, target);
 
     const upstreamRequest = sendRequest(
       target,

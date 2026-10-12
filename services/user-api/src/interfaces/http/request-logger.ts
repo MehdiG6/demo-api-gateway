@@ -10,10 +10,10 @@ declare module 'express-serve-static-core' {
   }
 }
 
-const requestIdPattern = /^[A-Za-z0-9._:-]{1,128}$/;
-const traceparentPattern = /^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/;
-const emptyTraceId = '0'.repeat(32);
-const emptySpanId = '0'.repeat(16);
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
+const TRACEPARENT_PATTERN = /^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/;
+const EMPTY_TRACE_ID = '0'.repeat(32);
+const EMPTY_SPAN_ID = '0'.repeat(16);
 
 function createTraceparent(): string {
   return `00-${randomBytes(16).toString('hex')}-${randomBytes(8).toString('hex')}-01`;
@@ -22,32 +22,43 @@ function createTraceparent(): string {
 function isValidTraceparent(value: string): boolean {
   const [, traceId, spanId] = value.split('-');
   return (
-    traceparentPattern.test(value) &&
-    traceId !== emptyTraceId &&
-    spanId !== emptySpanId
+    TRACEPARENT_PATTERN.test(value) &&
+    traceId !== EMPTY_TRACE_ID &&
+    spanId !== EMPTY_SPAN_ID
   );
+}
+
+function getRequestId(suppliedRequestId: string | undefined): string {
+  if (suppliedRequestId && REQUEST_ID_PATTERN.test(suppliedRequestId)) {
+    return suppliedRequestId;
+  }
+
+  return randomUUID();
+}
+
+function getTraceparent(suppliedTraceparent: string | undefined): string {
+  const normalizedTraceparent = suppliedTraceparent?.toLowerCase();
+
+  if (normalizedTraceparent && isValidTraceparent(normalizedTraceparent)) {
+    return normalizedTraceparent;
+  }
+
+  return createTraceparent();
 }
 
 export function createRequestLogger(logger: Logger): RequestHandler {
   return function requestLogger(request, response, next) {
     const startedAt = performance.now();
-    const suppliedRequestId = request.get('x-request-id');
-    const suppliedTraceparent = request.get('traceparent')?.toLowerCase();
-    const requestId =
-      suppliedRequestId && requestIdPattern.test(suppliedRequestId)
-        ? suppliedRequestId
-        : randomUUID();
-    const traceparent =
-      suppliedTraceparent && isValidTraceparent(suppliedTraceparent)
-        ? suppliedTraceparent
-        : createTraceparent();
+    const requestId = getRequestId(request.get('x-request-id'));
+    const traceparent = getTraceparent(request.get('traceparent'));
+    const [, traceId, spanId] = traceparent.split('-');
 
     request.requestId = requestId;
     request.traceparent = traceparent;
     request.log = logger.child({
       requestId,
-      traceId: traceparent.split('-')[1],
-      spanId: traceparent.split('-')[2],
+      traceId,
+      spanId,
     });
     response.setHeader('x-request-id', requestId);
     response.setHeader('traceparent', traceparent);

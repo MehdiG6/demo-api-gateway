@@ -1,4 +1,7 @@
-import express, { type ErrorRequestHandler } from 'express';
+import express, {
+  type ErrorRequestHandler,
+  type RequestHandler,
+} from 'express';
 import type { Logger } from 'pino';
 
 import { UserService } from './application/user-service.js';
@@ -8,11 +11,42 @@ import { requireVerifiedUser } from './interfaces/http/require-verified-user.js'
 import { createRequestLogger } from './interfaces/http/request-logger.js';
 import { createUserRouter } from './interfaces/http/user-router.js';
 
-export function createUserApiApp(
+interface UserApiDependencies {
+  userService?: UserService;
+  logger?: Logger;
+  trustProxyHops?: number;
+}
+
+const handleUnknownRoute: RequestHandler = (_request, response) => {
+  response.status(404).json({ error: 'Not Found' });
+};
+
+const handleUserApiError: ErrorRequestHandler = (
+  error,
+  request,
+  response,
+  next,
+) => {
+  if (response.headersSent) {
+    next(error);
+    return;
+  }
+
+  if (error instanceof SyntaxError) {
+    request.log.warn({ err: error }, 'Invalid JSON body');
+    response.status(400).json({ error: 'Invalid JSON body' });
+    return;
+  }
+
+  request.log.error({ err: error }, 'Unhandled User API error');
+  response.status(500).json({ error: 'Internal Server Error' });
+};
+
+export function createUserApiApp({
   userService = new UserService(new InMemoryUserRepository()),
-  logger: Logger = createLogger('info'),
+  logger = createLogger('info'),
   trustProxyHops = 0,
-) {
+}: UserApiDependencies = {}) {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', trustProxyHops);
@@ -20,30 +54,8 @@ export function createUserApiApp(
   app.use(express.json({ limit: '100kb' }));
   app.use('/api/users', requireVerifiedUser, createUserRouter(userService));
 
-  app.use((_request, response) => {
-    response.status(404).json({ error: 'Not Found' });
-  });
-
-  const errorHandler: ErrorRequestHandler = (
-    error,
-    request,
-    response,
-    next,
-  ) => {
-    if (response.headersSent) {
-      next(error);
-      return;
-    }
-
-    if (error instanceof SyntaxError) {
-      request.log.warn({ err: error }, 'Invalid JSON body');
-      response.status(400).json({ error: 'Invalid JSON body' });
-      return;
-    }
-    request.log.error({ err: error }, 'Unhandled User API error');
-    response.status(500).json({ error: 'Internal Server Error' });
-  };
-  app.use(errorHandler);
+  app.use(handleUnknownRoute);
+  app.use(handleUserApiError);
 
   return app;
 }
