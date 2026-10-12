@@ -165,7 +165,7 @@ npm run start:gateway
 
 ## Get a test token
 
-Request a scoped access token with Cognito's Authorization Code + PKCE flow. The helper reads `COGNITO_CLIENT_ID`, `COGNITO_HOSTED_UI_URL`, and optional `COGNITO_REDIRECT_URI` and `COGNITO_OAUTH_SCOPES` from the root `.env` file (or the environment). It opens the Hosted UI when possible and asks for the complete callback URL after sign-in. It requires `curl`, `node`, `openssl`, and an interactive terminal:
+Request a scoped access token with Cognito's Authorization Code + PKCE flow. The helper reads `COGNITO_CLIENT_ID`, `COGNITO_HOSTED_UI_URL`, and optional `COGNITO_REDIRECT_URI` and `COGNITO_OAUTH_SCOPES` from the root `.env` file (or the environment). It opens the Hosted UI in the Windows browser under WSL, the default browser on macOS or Linux, and asks for the complete callback URL after sign-in. If automatic browser launch is unavailable, open the printed URL manually. It requires `curl`, `node`, `openssl`, and an interactive terminal:
 
 ```bash
 export ACCESS_TOKEN=$(npm run --silent test:cognito-token)

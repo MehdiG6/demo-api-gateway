@@ -56,6 +56,20 @@ code_challenge="$(
 )"
 state="$(openssl rand -hex 16)"
 
+open_browser() {
+  local url="$1"
+
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v powershell.exe >/dev/null 2>&1; then
+    powershell.exe -NoProfile -NonInteractive -Command 'Start-Process $args[0]' "$url"
+  elif [[ "$(uname -s)" == "Darwin" ]] && command -v open >/dev/null 2>&1; then
+    open "$url"
+  elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$url"
+  else
+    return 1
+  fi
+}
+
 authorization_url="$(node -e '
   const [baseUrl, clientId, redirectUri, scope, challenge, state] = process.argv.slice(1);
   const url = new URL("/oauth2/authorize", baseUrl);
@@ -72,8 +86,8 @@ authorization_url="$(node -e '
 ' "$hosted_ui_url" "$client_id" "$redirect_uri" "$scopes" "$code_challenge" "$state")"
 
 printf 'Open this URL and sign in:\n\n%s\n\n' "$authorization_url" >&2
-if command -v xdg-open >/dev/null 2>&1; then
-  xdg-open "$authorization_url" >/dev/null 2>&1 || true
+if ! open_browser "$authorization_url" >/dev/null 2>&1; then
+  echo "Could not open a browser automatically. Open the URL above manually." >&2
 fi
 
 read -r -p "Paste the complete callback URL: " callback_url </dev/tty
