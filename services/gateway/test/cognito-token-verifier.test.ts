@@ -45,13 +45,11 @@ void test('verifies claims and caches remote Cognito signing keys', async (conte
     .setExpirationTime('5m')
     .sign(privateKey);
 
+  const identity = await verifier(token);
+  assert.equal(identity.userId, 'user-123');
   assert.equal(
-    (await verifier(token, ['demo-api/users.read'])).userId,
-    'user-123',
-  );
-  assert.equal(
-    (await verifier(token, ['demo-api/users.write'])).userId,
-    'user-123',
+    identity.claims.scope,
+    'demo-api/users.read demo-api/users.write',
   );
   assert.equal(jwksRequests, 1);
 
@@ -70,29 +68,27 @@ void test('verifies claims and caches remote Cognito signing keys', async (conte
     { client_id: clientId, token_use: 'access', scope: 'demo-api/users.read' },
     { expiration: 0 },
   );
-  await assert.rejects(verifier(expiredToken, ['demo-api/users.read']));
+  await assert.rejects(verifier(expiredToken));
 
   const wrongIssuerToken = await createToken(
     { client_id: clientId, token_use: 'access', scope: 'demo-api/users.read' },
     { tokenIssuer: 'https://issuer.example.test' },
   );
-  await assert.rejects(verifier(wrongIssuerToken, ['demo-api/users.read']));
+  await assert.rejects(verifier(wrongIssuerToken));
 
   const idToken = await createToken({
     aud: clientId,
     token_use: 'id',
     scope: 'demo-api/users.read',
   });
-  await assert.rejects(verifier(idToken, ['demo-api/users.read']));
+  await assert.rejects(verifier(idToken));
 
   const wrongClientToken = await createToken({
     client_id: 'other-client',
     token_use: 'access',
     scope: 'demo-api/users.read',
   });
-  await assert.rejects(verifier(wrongClientToken, ['demo-api/users.read']));
-
-  await assert.rejects(verifier(token, ['demo-api/admin']));
+  await assert.rejects(verifier(wrongClientToken));
 
   const invalidSignatureToken = await new SignJWT({
     client_id: clientId,
@@ -104,7 +100,5 @@ void test('verifies claims and caches remote Cognito signing keys', async (conte
     .setIssuer(issuer)
     .setExpirationTime('5m')
     .sign(untrustedPrivateKey);
-  await assert.rejects(
-    verifier(invalidSignatureToken, ['demo-api/users.read']),
-  );
+  await assert.rejects(verifier(invalidSignatureToken));
 });

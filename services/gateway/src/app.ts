@@ -5,6 +5,7 @@ import type { AccessTokenVerifier } from './infrastructure/auth/cognito-token-ve
 import { createReverseProxy } from './infrastructure/http/create-reverse-proxy.js';
 import { createLogger } from './infrastructure/logging/create-logger.js';
 import { createAuthenticateRequest } from './interfaces/http/authenticate-request.js';
+import { createAuthorizeRequest } from './interfaces/http/authorize-request.js';
 import { createRequestLogger } from './interfaces/http/request-logger.js';
 
 interface GatewayDependencies {
@@ -35,8 +36,11 @@ export function createGatewayApp({
   });
   app.use(
     '/api/users',
-    createAuthenticateRequest({
-      verifyAccessToken,
+    createAuthenticateRequest({ verifyAccessToken }),
+  );
+  app.use(
+    '/api/users',
+    createAuthorizeRequest({
       ...(readScope ? { readScope } : {}),
       ...(writeScope ? { writeScope } : {}),
     }),

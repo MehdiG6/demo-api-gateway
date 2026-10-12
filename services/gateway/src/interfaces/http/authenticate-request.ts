@@ -1,24 +1,21 @@
 import type { RequestHandler } from 'express';
 
 import {
-  InsufficientScopeError,
   type AccessTokenVerifier,
+  type VerifiedIdentity,
 } from '../../infrastructure/auth/cognito-token-verifier.js';
 
 declare module 'express-serve-static-core' {
   interface Request {
+    authenticatedIdentity?: VerifiedIdentity;
     verifiedUser?: string;
   }
 }
 
 export function createAuthenticateRequest({
   verifyAccessToken,
-  readScope = 'demo-api/users.read',
-  writeScope = 'demo-api/users.write',
 }: {
   verifyAccessToken: AccessTokenVerifier;
-  readScope?: string;
-  writeScope?: string;
 }): RequestHandler {
   return async function authenticateRequest(request, response, next) {
     const authorization = request.get('authorization');
@@ -31,25 +28,28 @@ export function createAuthenticateRequest({
     }
 
     try {
-      const requiredScope =
-        request.method === 'GET' || request.method === 'HEAD'
-          ? readScope
-          : writeScope;
-      const identity = await verifyAccessToken(match[1], [requiredScope]);
+      const identity = await verifyAccessToken(match[1]);
+      request.authenticatedIdentity = identity;
       request.verifiedUser = identity.userId;
       request.headers['x-verified-user'] = identity.userId;
       next();
     } catch (error) {
-      if (error instanceof InsufficientScopeError) {
-        request.log?.warn(
-          { err: error },
-          'Authorization failed: scope missing',
-        );
-        response.status(403).json({ error: 'Forbidden' });
-        return;
-      }
+      const authenticationError =
+        error instanceof Error ? error.name : 'UnknownError';
+      const authenticationErrorCode =
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        typeof error.code === 'string'
+          ? error.code
+          : undefined;
       request.log?.warn(
-        { err: error },
+        {
+          authenticationError,
+          ...(authenticationErrorCode
+            ? { authenticationErrorCode }
+            : {}),
+        },
         'Authentication failed: token rejected',
       );
       response.status(401).json({ error: 'Unauthorized' });

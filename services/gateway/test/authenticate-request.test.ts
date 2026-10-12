@@ -2,15 +2,22 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { AddressInfo } from 'node:net';
 import express from 'express';
+import pino, { type Logger } from 'pino';
 
 import type { AccessTokenVerifier } from '../src/infrastructure/auth/cognito-token-verifier.js';
-import { InsufficientScopeError } from '../src/infrastructure/auth/cognito-token-verifier.js';
 import { createAuthenticateRequest } from '../src/interfaces/http/authenticate-request.js';
+import { createAuthorizeRequest } from '../src/interfaces/http/authorize-request.js';
+import { createRequestLogger } from '../src/interfaces/http/request-logger.js';
 
-async function startTestApp(verifyAccessToken: AccessTokenVerifier) {
+async function startTestApp(
+  verifyAccessToken: AccessTokenVerifier,
+  logger: Logger = pino({ enabled: false }),
+) {
   let downstreamCalls = 0;
   const app = express();
+  app.use(createRequestLogger(logger));
   app.use(createAuthenticateRequest({ verifyAccessToken }));
+  app.use(createAuthorizeRequest());
   app.all('/api/users', (request, response) => {
     downstreamCalls += 1;
     response.json({ verifiedUser: request.get('x-verified-user') });
@@ -43,6 +50,39 @@ void test('returns 401 and does not invoke downstream handler for an invalid tok
   assert.deepEqual(await response.json(), { error: 'Unauthorized' });
 });
 
+void test('does not expose rejected tokens or verifier details', async (context) => {
+  const entries: Record<string, unknown>[] = [];
+  const logger = pino(
+    { base: null, timestamp: false },
+    {
+      write(message) {
+        entries.push(JSON.parse(message) as Record<string, unknown>);
+      },
+    },
+  );
+  const testApp = await startTestApp(
+    () => Promise.reject(new Error('sensitive verifier detail')),
+    logger,
+  );
+  context.after(() => testApp.close());
+
+  const response = await testApp.request({
+    authorization: 'Bearer sensitive-token-value',
+  });
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: 'Unauthorized' });
+  const serializedEntries = JSON.stringify(entries);
+  assert.doesNotMatch(
+    serializedEntries,
+    /sensitive-token-value|sensitive verifier detail/,
+  );
+  const rejection = entries.find(
+    (entry) => entry.msg === 'Authentication failed: token rejected',
+  );
+  assert.equal(rejection?.authenticationError, 'Error');
+});
+
 void test('returns 401 without verification or forwarding when Bearer JWT is missing', async (context) => {
   let verifierCalls = 0;
   const testApp = await startTestApp(() => {
@@ -63,14 +103,14 @@ void test('returns 401 without verification or forwarding when Bearer JWT is mis
 });
 
 void test('injects the verified user before invoking the downstream handler', async (context) => {
-  const requestedScopes: (readonly string[])[] = [];
-  const testApp = await startTestApp((_token, requiredScopes = []) => {
-    requestedScopes.push(requiredScopes);
-    return Promise.resolve({
+  const testApp = await startTestApp(() =>
+    Promise.resolve({
       userId: 'user-123',
-      claims: {},
-    });
-  });
+      claims: {
+        scope: 'demo-api/users.read demo-api/users.write',
+      },
+    }),
+  );
   context.after(() => testApp.close());
 
   const response = await testApp.request({ authorization: 'Bearer valid' });
@@ -83,19 +123,37 @@ void test('injects the verified user before invoking the downstream handler', as
   assert.equal(writeResponse.status, 200);
   assert.equal(testApp.downstreamCalls, 2);
   assert.deepEqual(await response.json(), { verifiedUser: 'user-123' });
-  assert.deepEqual(requestedScopes, [
-    ['demo-api/users.read'],
-    ['demo-api/users.write'],
-  ]);
 });
 
 void test('returns 403 when the access token lacks the required scope', async (context) => {
   const testApp = await startTestApp(() =>
-    Promise.reject(new InsufficientScopeError('scope missing')),
+    Promise.resolve({
+      userId: 'user-123',
+      claims: { scope: 'demo-api/users.write' },
+    }),
   );
   context.after(() => testApp.close());
 
   const response = await testApp.request({ authorization: 'Bearer valid' });
+
+  assert.equal(response.status, 403);
+  assert.equal(testApp.downstreamCalls, 0);
+  assert.deepEqual(await response.json(), { error: 'Forbidden' });
+});
+
+void test('requires the write scope for mutations', async (context) => {
+  const testApp = await startTestApp(() =>
+    Promise.resolve({
+      userId: 'user-123',
+      claims: { scope: 'demo-api/users.read' },
+    }),
+  );
+  context.after(() => testApp.close());
+
+  const response = await testApp.request(
+    { authorization: 'Bearer valid-token' },
+    'POST',
+  );
 
   assert.equal(response.status, 403);
   assert.equal(testApp.downstreamCalls, 0);

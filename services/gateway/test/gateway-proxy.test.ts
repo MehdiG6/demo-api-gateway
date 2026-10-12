@@ -11,11 +11,15 @@ void test('forwards the verified identity and preserves the user API path', asyn
   let receivedUser = '';
   let receivedRequestId = '';
   let receivedTraceparent = '';
+  let receivedAuthorization = '';
+  let receivedCookie = '';
   const backend = createServer((request, response) => {
     receivedPath = request.url ?? '';
     receivedUser = String(request.headers['x-verified-user'] ?? '');
     receivedRequestId = String(request.headers['x-request-id'] ?? '');
     receivedTraceparent = String(request.headers.traceparent ?? '');
+    receivedAuthorization = String(request.headers.authorization ?? '');
+    receivedCookie = String(request.headers.cookie ?? '');
     response.setHeader('content-type', 'application/json');
     response.end(JSON.stringify({ ok: true }));
   }).listen(0);
@@ -28,7 +32,10 @@ void test('forwards the verified identity and preserves the user API path', asyn
   const app = createGatewayApp({
     backendUrl: `http://127.0.0.1:${backendPort}`,
     verifyAccessToken: () =>
-      Promise.resolve({ userId: 'trusted-user', claims: {} }),
+      Promise.resolve({
+        userId: 'trusted-user',
+        claims: { scope: 'demo-api/users.read' },
+      }),
     logger: pino({ enabled: false }),
   });
   const gateway = app.listen(0);
@@ -43,6 +50,7 @@ void test('forwards the verified identity and preserves the user API path', asyn
     {
       headers: {
         authorization: 'Bearer valid',
+        cookie: 'session=sensitive-value',
         'x-request-id': 'request-123',
         'x-verified-user': 'spoofed-user',
       },
@@ -53,6 +61,8 @@ void test('forwards the verified identity and preserves the user API path', asyn
   assert.equal(receivedPath, '/api/users/42?active=true');
   assert.equal(receivedUser, 'trusted-user');
   assert.equal(receivedRequestId, 'request-123');
+  assert.equal(receivedAuthorization, '');
+  assert.equal(receivedCookie, '');
   assert.match(receivedTraceparent, /^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
   assert.equal(response.headers.get('x-request-id'), 'request-123');
 });

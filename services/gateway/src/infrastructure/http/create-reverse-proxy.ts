@@ -11,13 +11,24 @@ export function createReverseProxy(backendUrl: string): RequestHandler {
 
   return function reverseProxy(request, response) {
     const target = new URL(request.originalUrl, backend);
-    const headers: OutgoingHttpHeaders = {
-      ...request.headers,
-      host: target.host,
-    };
     const [version, traceId, , flags] = request.traceparent.split('-');
-    headers.traceparent = `${version}-${traceId}-${randomBytes(8).toString('hex')}-${flags}`;
-    delete headers.authorization;
+    const headers: OutgoingHttpHeaders = {
+      host: target.host,
+      'x-request-id': request.requestId,
+      traceparent: `${version}-${traceId}-${randomBytes(8).toString('hex')}-${flags}`,
+      ...(request.verifiedUser
+        ? { 'x-verified-user': request.verifiedUser }
+        : {}),
+      ...(request.headers.accept
+        ? { accept: request.headers.accept }
+        : {}),
+      ...(request.headers['content-type']
+        ? { 'content-type': request.headers['content-type'] }
+        : {}),
+      ...(request.headers['content-length']
+        ? { 'content-length': request.headers['content-length'] }
+        : {}),
+    };
 
     const upstreamRequest = sendRequest(
       target,

@@ -200,9 +200,19 @@ npm run cdk:bootstrap -- -c domainPrefix=demo-secure-api "aws://$AWS_ACCOUNT_ID/
 
 `npm run cdk:destroy` deletes the stack, but the retained Cognito User Pool is not deleted with it. Use `npm run validate` before submitting changes; it runs the formatting check, lint, type checks, tests, and builds in sequence.
 
+## Gateway security boundaries
+
+The gateway handles each concern in a separate stage:
+
+1. **Authentication** validates the Cognito signature and issuer, requires an unexpired access token, checks the App Client ID, and establishes the authenticated identity.
+2. **Authorization** independently selects the required read or write scope from the HTTP method and rejects authenticated callers that lack it.
+3. **Proxying** runs only after both checks pass. It removes client-supplied identity data and forwards only the verified user, tracing headers, and required HTTP content headers. Client authorization and cookie headers are never sent to the User API.
+
+Authentication failures return only `401 Unauthorized`, authorization failures return only `403 Forbidden`, and unexpected failures return generic `500` or `502` responses. Detailed diagnostics remain in server logs. Rejected tokens, verifier error messages, request bodies, cookie values, and query-string values are not logged.
+
 ## Logging and tracing
 
-Production logs are newline-delimited JSON with ISO timestamps, service and environment names, request ID, W3C trace ID and span ID, method, path, source IP, status, duration, and the verified user ID when available. Authorization and token fields are redacted; request bodies are never logged.
+Production logs are newline-delimited JSON with ISO timestamps, service and environment names, request ID, W3C trace ID and span ID, method, path without its query string, source IP, status, duration, and the verified user ID when available. Authorization and token fields are redacted; request bodies are never logged.
 
 The gateway validates or creates `X-Request-ID` and W3C `traceparent` headers, returns them to the client, and propagates them to the User API with a new downstream span ID. Use either value to correlate one request across both services:
 

@@ -13,10 +13,7 @@ export interface VerifiedIdentity {
 
 export type AccessTokenVerifier = (
   token: string,
-  requiredScopes?: readonly string[],
 ) => Promise<VerifiedIdentity>;
-
-export class InsufficientScopeError extends Error {}
 
 export function createCognitoTokenVerifier({
   issuer,
@@ -32,7 +29,7 @@ export function createCognitoTokenVerifier({
     { cooldownDuration: 30_000, cacheMaxAge: 600_000 },
   );
 
-  return async function verifyAccessToken(token, requiredScopes = []) {
+  return async function verifyAccessToken(token) {
     const { payload } = await jwtVerify(token, jwks, {
       issuer,
       algorithms: ['RS256'],
@@ -47,16 +44,6 @@ export function createCognitoTokenVerifier({
     }
     if (typeof payload.sub !== 'string' || payload.sub.length === 0) {
       throw new Error('Token does not contain a subject');
-    }
-
-    const grantedScopes =
-      typeof payload.scope === 'string'
-        ? new Set(payload.scope.split(/\s+/).filter(Boolean))
-        : new Set<string>();
-    if (requiredScopes.some((scope) => !grantedScopes.has(scope))) {
-      throw new InsufficientScopeError(
-        'Token does not grant the required scope',
-      );
     }
 
     return { userId: payload.sub, claims: payload };

@@ -31,7 +31,7 @@ void test('writes structured gateway request details with the verified user', as
   const { port } = server.address() as AddressInfo;
 
   const response = await fetch(
-    `http://127.0.0.1:${port}/api/users?active=true`,
+    `http://127.0.0.1:${port}/api/users?token=sensitive-query-value`,
   );
   assert.equal(response.status, 200);
   await response.text();
@@ -39,9 +39,10 @@ void test('writes structured gateway request details with the verified user', as
   const completion = entries.find((entry) => entry.msg === 'Request completed');
   assert.ok(completion);
   assert.equal(completion.method, 'GET');
-  assert.equal(completion.path, '/api/users?active=true');
+  assert.equal(completion.path, '/api/users');
   assert.equal(completion.userId, 'user-123');
   assert.equal(typeof completion.sourceIp, 'string');
   assert.equal(typeof completion.timestamp, 'string');
   assert.equal(Number.isNaN(Date.parse(String(completion.timestamp))), false);
+  assert.doesNotMatch(JSON.stringify(entries), /sensitive-query-value/);
 });
