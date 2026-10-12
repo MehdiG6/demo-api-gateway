@@ -43,6 +43,25 @@ void test('returns 401 and does not invoke downstream handler for an invalid tok
   assert.deepEqual(await response.json(), { error: 'Unauthorized' });
 });
 
+void test('returns 401 without verification or forwarding when Bearer JWT is missing', async (context) => {
+  let verifierCalls = 0;
+  const testApp = await startTestApp(() => {
+    verifierCalls += 1;
+    return Promise.reject(new Error('should not be called'));
+  });
+  context.after(() => testApp.close());
+
+  const missingResponse = await testApp.request();
+  const wrongSchemeResponse = await testApp.request({
+    authorization: 'Basic credentials',
+  });
+
+  assert.equal(missingResponse.status, 401);
+  assert.equal(wrongSchemeResponse.status, 401);
+  assert.equal(verifierCalls, 0);
+  assert.equal(testApp.downstreamCalls, 0);
+});
+
 void test('injects the verified user before invoking the downstream handler', async (context) => {
   const requestedScopes: (readonly string[])[] = [];
   const testApp = await startTestApp((_token, requiredScopes = []) => {

@@ -112,7 +112,7 @@ COGNITO_WRITE_SCOPE=demo-api/users.write
 USER_API_PORT=3001
 ```
 
-`COGNITO_CLIENT_ID` must match the access token's `client_id` claim. The gateway requires `users.read` for `GET` and `HEAD`, and `users.write` for mutations. The JWKS URL is derived from the issuer. `COGNITO_JWKS_URI` is available only when an explicit override is needed.
+`COGNITO_CLIENT_ID` must match the access token's `client_id` claim. For Cognito user access tokens, `client_id` identifies the intended app client and is the audience check; unlike ID tokens, these tokens do not normally carry the app client in `aud`. The gateway requires `users.read` for `GET` and `HEAD`, and `users.write` for mutations. The JWKS URL is derived from the issuer. `COGNITO_JWKS_URI` is available only when an explicit override is needed.
 
 The stack is pinned to `ap-southeast-2`. The User Pool uses a retain policy, so deleting the CDK stack does not delete user identities. Delete the retained pool manually only when its data is no longer required.
 

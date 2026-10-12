@@ -1,4 +1,7 @@
-import 'dotenv/config';
+import { config as loadDotEnv } from 'dotenv';
+import { fileURLToPath } from 'node:url';
+
+loadDotEnv({ path: fileURLToPath(new URL('../../../.env', import.meta.url)) });
 
 import { createUserApiApp } from './app.js';
 import { loadConfig } from './config.js';

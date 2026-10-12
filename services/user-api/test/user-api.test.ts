@@ -3,10 +3,12 @@ import test from 'node:test';
 import type { AddressInfo } from 'node:net';
 import pino from 'pino';
 
+import type { UserRepository } from '../src/application/user-repository.js';
+import { UserService } from '../src/application/user-service.js';
 import { createUserApiApp } from '../src/app.js';
 
-async function startUserApi() {
-  const server = createUserApiApp(undefined, pino({ enabled: false })).listen(
+async function startUserApi(userService?: UserService) {
+  const server = createUserApiApp(userService, pino({ enabled: false })).listen(
     0,
   );
   await new Promise<void>((resolve) => server.once('listening', resolve));
@@ -104,4 +106,23 @@ void test('returns 400 for invalid input without exposing details', async (conte
   assert.deepEqual(await malformedResponse.json(), {
     error: 'Invalid JSON body',
   });
+});
+
+void test('returns a generic 500 without leaking internal errors', async (context) => {
+  const repository: UserRepository = {
+    findAll: () => Promise.reject(new Error('sensitive implementation detail')),
+    findById: () => Promise.resolve(undefined),
+    create: () => Promise.reject(new Error('not used')),
+    update: () => Promise.resolve(undefined),
+    delete: () => Promise.resolve(false),
+  };
+  const api = await startUserApi(new UserService(repository));
+  context.after(() => api.close());
+
+  const response = await fetch(api.url, { headers: verifiedHeaders });
+  const body = await response.text();
+
+  assert.equal(response.status, 500);
+  assert.deepEqual(JSON.parse(body), { error: 'Internal Server Error' });
+  assert.doesNotMatch(body, /sensitive implementation detail|stack/i);
 });
